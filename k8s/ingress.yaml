@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ragflow-ingress
+  namespace: ragflow
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  rules:
+  - host: ragflow.local  # 请根据实际情况修改域名
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ragflow
+            port:
+              number: 9380
+---
+# 如果需要 HTTPS，可以配置 TLS
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: ragflow-ingress-tls
+#   namespace: ragflow
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+#     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+#     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+#     nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+#     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+# spec:
+#   tls:
+#   - hosts:
+#     - ragflow.local
+#     secretName: ragflow-tls
+#   rules:
+#   - host: ragflow.local
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: ragflow
+#             port:
+#               number: 9380
