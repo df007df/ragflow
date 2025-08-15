@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ragflow-config
+  namespace: ragflow
+data:
+  # 文档引擎类型
+  DOC_ENGINE: "elasticsearch"
+  COMPOSE_PROFILES: "elasticsearch"
+  
+  # Elasticsearch 配置
+  STACK_VERSION: "8.11.3"
+  ES_HOST: "es01"
+  ES_PORT: "1200"
+  ELASTIC_PASSWORD: "infini_rag_flow"
+  
+  # OpenSearch 配置
+  OS_PORT: "1201"
+  OS_HOST: "opensearch01"
+  OPENSEARCH_PASSWORD: "infini_rag_flow_OS_01"
+  
+  # Kibana 配置
+  KIBANA_PORT: "6601"
+  KIBANA_USER: "rag_flow"
+  KIBANA_PASSWORD: "infini_rag_flow"
+  
+  # 内存限制
+  MEM_LIMIT: "8073741824"
+  
+  # Infinity 配置
+  INFINITY_HOST: "infinity"
+  INFINITY_THRIFT_PORT: "23817"
+  INFINITY_HTTP_PORT: "23820"
+  INFINITY_PSQL_PORT: "5432"
+  
+  # MySQL 配置
+  MYSQL_PASSWORD: "infini_rag_flow"
+  MYSQL_HOST: "mysql"
+  MYSQL_DBNAME: "rag_flow"
+  MYSQL_PORT: "5455"
+  MYSQL_MAX_PACKET: "1073741824"
+  
+  # MinIO 配置
+  MINIO_HOST: "minio"
+  MINIO_CONSOLE_PORT: "9001"
+  MINIO_PORT: "9000"
+  MINIO_USER: "rag_flow"
+  MINIO_PASSWORD: "infini_rag_flow"
+  
+  # Redis 配置
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "infini_rag_flow"
+  
+  # RAGFlow 配置
+  SVR_HTTP_PORT: "9380"
+  RAGFLOW_IMAGE: "infiniflow/ragflow:v0.20.1-slim"
+  
+  # 时区
+  TIMEZONE: "Asia/Shanghai"
+  
+  # 其他配置
+  HF_ENDPOINT: ""
+  MACOS: ""

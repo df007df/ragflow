@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  namespace: ragflow
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: elasticsearch:8.11.3
+        ports:
+        - containerPort: 9200
+        env:
+        - name: node.name
+          value: "es01"
+        - name: ELASTIC_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: ELASTIC_PASSWORD
+        - name: bootstrap.memory_lock
+          value: "false"
+        - name: discovery.type
+          value: "single-node"
+        - name: xpack.security.enabled
+          value: "true"
+        - name: xpack.security.http.ssl.enabled
+          value: "false"
+        - name: xpack.security.transport.ssl.enabled
+          value: "false"
+        - name: cluster.routing.allocation.disk.watermark.low
+          value: "5gb"
+        - name: cluster.routing.allocation.disk.watermark.high
+          value: "3gb"
+        - name: cluster.routing.allocation.disk.watermark.flood_stage
+          value: "2gb"
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: TIMEZONE
+        volumeMounts:
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 120
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          fsGroup: 1000
+      volumes:
+      - name: es-data
+        persistentVolumeClaim:
+          claimName: elasticsearch-pvc
+      securityContext:
+        fsGroup: 1000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: ragflow
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+  - name: elasticsearch
+    port: 9200
+    targetPort: 9200
+  type: ClusterIP

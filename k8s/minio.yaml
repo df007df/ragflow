@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: ragflow
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        command:
+        - server
+        - --console-address
+        - ":9001"
+        - /data
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: MINIO_USER
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: MINIO_PASSWORD
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: TIMEZONE
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: minio-data
+        persistentVolumeClaim:
+          claimName: minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: ragflow
+  labels:
+    app: minio
+spec:
+  selector:
+    app: minio
+  ports:
+  - name: minio-api
+    port: 9000
+    targetPort: 9000
+  - name: minio-console
+    port: 9001
+    targetPort: 9001
+  type: ClusterIP

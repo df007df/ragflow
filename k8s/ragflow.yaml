@@ -1,0 +1,391 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragflow
+  namespace: ragflow
+  labels:
+    app: ragflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ragflow
+  template:
+    metadata:
+      labels:
+        app: ragflow
+    spec:
+      # 注意：由于在命名空间级别设置了默认节点选择器，
+      # 该命名空间下的所有 Pod 都会自动部署在有 ragflow=true 标签的节点上
+      # 如果需要更复杂的节点选择逻辑，可以在这里添加 nodeSelector 或 nodeAffinity
+      
+      containers:
+      - name: ragflow
+        image: infiniflow/ragflow:v0.20.1-slim
+        ports:
+        - containerPort: 9380
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 5678
+        - containerPort: 5679
+        - containerPort: 9382
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: TIMEZONE
+        - name: HF_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: HF_ENDPOINT
+        - name: MACOS
+          valueFrom:
+            configMapKeyRef:
+              name: ragflow-config
+              key: MACOS
+        volumeMounts:
+        - name: ragflow-logs
+          mountPath: /ragflow/logs
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/ragflow.conf
+          subPath: ragflow.conf
+        - name: nginx-proxy-config
+          mountPath: /etc/nginx/proxy.conf
+          subPath: proxy.conf
+        - name: nginx-main-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: history-data
+          mountPath: /ragflow/history_data_agent
+        - name: service-config
+          mountPath: /ragflow/conf/service_conf.yaml.template
+          subPath: service_conf.yaml.template
+        - name: entrypoint-script
+          mountPath: /ragflow/entrypoint.sh
+          subPath: entrypoint.sh
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9380
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9380
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: ragflow-logs
+        persistentVolumeClaim:
+          claimName: ragflow-logs-pvc
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: nginx-proxy-config
+        configMap:
+          name: nginx-config
+      - name: nginx-main-config
+        configMap:
+          name: nginx-config
+      - name: history-data
+        emptyDir: {}
+      - name: service-config
+        configMap:
+          name: service-config
+      - name: entrypoint-script
+        configMap:
+          name: entrypoint-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: ragflow
+data:
+  ragflow.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        
+        location / {
+            proxy_pass http://localhost:9380;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+  proxy.conf: |
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_read_timeout 300s;
+    proxy_buffer_size 64k;
+    proxy_buffers 4 32k;
+    proxy_busy_buffers_size 64k;
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include /etc/nginx/proxy.conf;
+        include /etc/nginx/conf.d/*.conf;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-config
+  namespace: ragflow
+data:
+  service_conf.yaml.template: |
+    ragflow:
+      host: ${RAGFLOW_HOST:-0.0.0.0}
+      http_port: 9380
+    mysql:
+      name: '${MYSQL_DBNAME:-rag_flow}'
+      user: '${MYSQL_USER:-root}'
+      password: '${MYSQL_PASSWORD:-infini_rag_flow}'
+      host: '${MYSQL_HOST:-mysql}'
+      port: 3306
+      max_connections: 900
+      stale_timeout: 300
+      max_allowed_packet: ${MYSQL_MAX_PACKET:-1073741824}
+    minio:
+      user: '${MINIO_USER:-rag_flow}'
+      password: '${MINIO_PASSWORD:-infini_rag_flow}'
+      host: '${MINIO_HOST:-minio}:9000'
+    es:
+      hosts: 'http://${ES_HOST:-es01}:9200'
+      username: '${ES_USER:-elastic}'
+      password: '${ELASTIC_PASSWORD:-infini_rag_flow}'
+    os:
+      hosts: 'http://${OS_HOST:-opensearch01}:9201'
+      username: '${OS_USER:-admin}'
+      password: '${OPENSEARCH_PASSWORD:-infini_rag_flow_OS_01}'
+    infinity:
+      uri: '${INFINITY_HOST:-infinity}:23817'
+      db_name: 'default_db'
+    redis:
+      db: 1
+      password: '${REDIS_PASSWORD:-infini_rag_flow}'
+      host: '${REDIS_HOST:-redis}:6379'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: entrypoint-config
+  namespace: ragflow
+data:
+  entrypoint.sh: |
+    #!/usr/bin/env bash
+    
+    set -e
+    
+    # -----------------------------------------------------------------------------
+    # Usage and command-line argument parsing
+    # -----------------------------------------------------------------------------
+    function usage() {
+        echo "Usage: $0 [--disable-webserver] [--disable-taskexecutor] [--consumer-no-beg=<num>] [--consumer-no-end=<num>] [--workers=<num>] [--host-id=<string>]"
+        echo
+        echo "  --disable-webserver             Disables the web server (nginx + ragflow_server)."
+        echo "  --disable-taskexecutor          Disables task executor workers."
+        echo "  --enable-mcpserver              Enables the MCP server."
+        echo "  --consumer-no-beg=<num>         Start range for consumers (if using range-based)."
+        echo "  --consumer-no-end=<num>         End range for consumers (if using range-based)."
+        echo "  --workers=<num>                 Number of task executors to run (if range is not used)."
+        echo "  --host-id=<string>              Unique ID for the host (defaults to \`hostname\`)."
+        echo
+        echo "Examples:"
+        echo "  $0 --disable-taskexecutor"
+        echo "  $0 --disable-webserver --consumer-no-beg=0 --consumer-no-end=5"
+        echo "  $0 --disable-webserver --workers=2 --host-id=myhost123"
+        echo "  $0 --enable-mcpserver"
+        exit 1
+    }
+    
+    ENABLE_WEBSERVER=1 # Default to enable web server
+    ENABLE_TASKEXECUTOR=1  # Default to enable task executor
+    ENABLE_MCP_SERVER=0
+    CONSUMER_NO_BEG=0
+    CONSUMER_NO_END=0
+    WORKERS=1
+    
+    MCP_HOST="127.0.0.1"
+    MCP_PORT=9382
+    MCP_BASE_URL="http://127.0.0.1:9380"
+    MCP_SCRIPT_PATH="/ragflow/mcp/server/server.py"
+    MCP_MODE="self-host"
+    MCP_HOST_API_KEY=""
+    MCP_TRANSPORT_SSE_FLAG="--transport-sse-enabled"
+    MCP_TRANSPORT_STREAMABLE_HTTP_FLAG="--transport-streamable-http-enabled"
+    MCP_JSON_RESPONSE_FLAG="--json-response"
+    
+    # -----------------------------------------------------------------------------
+    # Host ID logic:
+    #   1. By default, use the system hostname if length <= 32
+    #   2. Otherwise, use the full MD5 hash of the hostname (32 hex chars)
+    # -----------------------------------------------------------------------------
+    CURRENT_HOSTNAME="$(hostname)"
+    if [ ${#CURRENT_HOSTNAME} -le 32 ]; then
+      DEFAULT_HOST_ID="$CURRENT_HOSTNAME"
+    else
+      DEFAULT_HOST_ID="$(echo -n "$CURRENT_HOSTNAME" | md5sum | cut -d ' ' -f 1)"
+    fi
+    
+    HOST_ID="$DEFAULT_HOST_ID"
+    
+    # Parse arguments
+    for arg in "$@"; do
+      case $arg in
+        --disable-webserver)
+          ENABLE_WEBSERVER=0
+          shift
+          ;;
+        --disable-taskexecutor)
+          ENABLE_TASKEXECUTOR=0
+          shift
+          ;;
+        --enable-mcpserver)
+          ENABLE_MCP_SERVER=1
+          shift
+          ;;
+        --mcp-host=*)
+          MCP_HOST="${arg#*=}"
+          shift
+          ;;
+        --mcp-port=*)
+          MCP_PORT="${arg#*=}"
+          shift
+          ;;
+        --mcp-base-url=*)
+          MCP_BASE_URL="${arg#*=}"
+          shift
+          ;;
+        --mcp-mode=*)
+          MCP_MODE="${arg#*=}"
+          shift
+          ;;
+        --mcp-host-api-key=*)
+          MCP_HOST_API_KEY="${arg#*=}"
+          shift
+          ;;
+        --mcp-script-path=*)
+          MCP_SCRIPT_PATH="${arg#*=}"
+          shift
+          ;;
+        --no-transport-sse-enabled)
+          MCP_TRANSPORT_SSE_FLAG="--no-transport-sse-enabled"
+          shift
+          ;;
+        --no-transport-streamable-http-enabled)
+          MCP_TRANSPORT_STREAMABLE_HTTP_FLAG="--no-transport-streamable-http-enabled"
+          shift
+          ;;
+        --no-json-response)
+          MCP_JSON_RESPONSE_FLAG="--no-json-response"
+          shift
+          ;;
+        --consumer-no-beg=*)
+          CONSUMER_NO_BEG="${arg#*=}"
+          shift
+          ;;
+        --consumer-no-end=*)
+          CONSUMER_NO_END="${arg#*=}"
+          shift
+          ;;
+        --workers=*)
+          WORKERS="${arg#*=}"
+          shift
+          ;;
+        --host-id=*)
+          HOST_ID="${arg#*=}"
+          shift
+          ;;
+        -h|--help)
+          usage
+          ;;
+        *)
+          echo "Unknown option: $arg"
+          usage
+          ;;
+      esac
+    done
+    
+    # Start services based on configuration
+    if [ $ENABLE_WEBSERVER -eq 1 ]; then
+      echo "Starting web server..."
+      # Start nginx and ragflow_server
+    fi
+    
+    if [ $ENABLE_TASKEXECUTOR -eq 1 ]; then
+      echo "Starting task executor..."
+      # Start task executor workers
+    fi
+    
+    if [ $ENABLE_MCP_SERVER -eq 1 ]; then
+      echo "Starting MCP server..."
+      # Start MCP server
+    fi
+    
+    # Keep container running
+    tail -f /dev/null
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragflow
+  namespace: ragflow
+  labels:
+    app: ragflow
+spec:
+  selector:
+    app: ragflow
+  ports:
+  - name: http
+    port: 9380
+    targetPort: 9380
+  - name: http-alt
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
+  - name: debug1
+    port: 5678
+    targetPort: 5678
+  - name: debug2
+    port: 5679
+    targetPort: 5679
+  - name: mcp
+    port: 9382
+    targetPort: 9382
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragflow-ingress
+  namespace: ragflow
+  labels:
+    app: ragflow
+spec:
+  selector:
+    app: ragflow
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9380
+  type: LoadBalancer
