@@ -9,7 +9,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -23,7 +23,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -37,7 +37,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -51,7 +51,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -65,7 +65,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -79,7 +79,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
 ---
 apiVersion: v1
@@ -93,5 +93,5 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-storage
+  storageClassName: ragflow-local-storage
   volumeMode: Filesystem
