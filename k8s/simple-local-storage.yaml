@@ -1,0 +1,197 @@
+# 简化的本地存储配置
+# 不使用Local Volume Provisioner，直接使用静态PV
+
+---
+# StorageClass for RAGFlow
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ragflow-local-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    description: "RAGFlow本地存储类"
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+---
+# MySQL PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  labels:
+    type: local-storage
+    app: mysql
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/mysql-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# MinIO PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+  labels:
+    type: local-storage
+    app: minio
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/minio-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# Redis PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+  labels:
+    type: local-storage
+    app: redis
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/redis-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# Elasticsearch PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: elasticsearch-pv
+  labels:
+    type: local-storage
+    app: elasticsearch
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/elasticsearch-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# Infinity PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: infinity-pv
+  labels:
+    type: local-storage
+    app: infinity
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/infinity-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# OpenSearch PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: opensearch-pv
+  labels:
+    type: local-storage
+    app: opensearch
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/opensearch-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"
+---
+# RAGFlow Logs PV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ragflow-logs-pv
+  labels:
+    type: local-storage
+    app: ragflow-logs
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ragflow-local-storage
+  local:
+    path: /mnt/ragflow/ragflow-logs-pvc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: ragflow
+          operator: In
+          values:
+          - "true"

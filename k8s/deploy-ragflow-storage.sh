@@ -21,15 +21,11 @@ echo "发现RAGFlow节点: $RAGFLOW_NODES"
 echo "确保ragflow命名空间存在..."
 kubectl apply -f k8s/namespace.yaml
 
-# 3. 部署Local Volume Provisioner
-echo "部署Local Volume Provisioner..."
-kubectl apply -f k8s/local-volume-provisioner.yaml
+# 3. 部署简化的本地存储配置
+echo "部署本地存储配置..."
+kubectl apply -f k8s/simple-local-storage.yaml
 
-# 4. 等待DaemonSet就绪
-echo "等待Local Volume Provisioner就绪..."
-kubectl wait --for=condition=ready pod -l app=local-volume-provisioner -n ragflow --timeout=300s
-
-# 5. 在RAGFlow节点上创建存储目录
+# 4. 在RAGFlow节点上创建存储目录
 echo "在RAGFlow节点上创建存储目录..."
 for node in $RAGFLOW_NODES; do
     echo "在节点 $node 上创建目录..."
@@ -43,11 +39,10 @@ for node in $RAGFLOW_NODES; do
     echo "节点 $node 目录创建完成"
 done
 
-# 6. 等待PV自动创建
-echo "等待PV自动创建..."
-sleep 30
+# 5. 验证部署
+echo "验证PV创建..."
 
-# 7. 验证部署
+# 6. 验证部署
 echo "验证部署..."
 echo "=== StorageClass ==="
 kubectl get storageclass ragflow-local-storage
@@ -55,8 +50,8 @@ kubectl get storageclass ragflow-local-storage
 echo "=== PersistentVolumes ==="
 kubectl get pv
 
-echo "=== Local Volume Provisioner Pods ==="
-kubectl get pods -n ragflow -l app=local-volume-provisioner
+echo "=== PersistentVolumes ==="
+kubectl get pv
 
 echo "=== RAGFlow节点状态 ==="
 kubectl get nodes -l ragflow=true
