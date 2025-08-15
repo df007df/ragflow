@@ -32,7 +32,7 @@ spec:
         - mountPath: /etc/provisioner/config
           name: provisioner-config
           readOnly: true
-        - mountPath: /mnt/disks
+        - mountPath: /mnt/ragflow
           name: local-disks
           mountPropagation: "HostToContainer"
         env:
@@ -52,7 +52,7 @@ spec:
           name: local-volume-provisioner-config
       - name: local-disks
         hostPath:
-          path: /mnt/disks
+          path: /mnt/ragflow
 ---
 # ConfigMap for provisioner
 apiVersion: v1
@@ -63,8 +63,8 @@ metadata:
 data:
   storageClassMap: |
     ragflow-local-storage:
-      hostDir: /mnt/disks
-      mountDir: /mnt/disks
+      hostDir: /mnt/ragflow
+      mountDir: /mnt/ragflow
       blockCleanerCommand:
         - "/scripts/shred.sh"
         - "2"

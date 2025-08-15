@@ -35,10 +35,10 @@ for node in $RAGFLOW_NODES; do
     echo "在节点 $node 上创建目录..."
     
     # 使用kubectl debug创建目录
-    kubectl debug node/$node -it --image=busybox -- chroot /host mkdir -p /mnt/disks/{mysql,minio,redis,elasticsearch,infinity,opensearch,ragflow-logs}
+    kubectl debug node/$node -it --image=busybox -- chroot /host mkdir -p /mnt/ragflow/{mysql-pvc,minio-pvc,redis-pvc,elasticsearch-pvc,infinity-pvc,opensearch-pvc,ragflow-logs-pvc}
     
     # 设置权限
-    kubectl debug node/$node -it --image=busybox -- chroot /host chmod 777 /mnt/disks/*
+    kubectl debug node/$node -it --image=busybox -- chroot /host chmod 777 /mnt/ragflow/*
     
     echo "节点 $node 目录创建完成"
 done
