@@ -15,6 +15,61 @@ spec:
       labels:
         app: mysql
     spec:
+      securityContext:
+        fsGroup: 999
+        supplementalGroups: [999]
+    
+        image: mysql:8.0.39
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=== 开始初始化MySQL数据目录 ==="
+          echo "当前用户: $(whoami)"
+          echo "当前用户ID: $(id)"
+          
+          # 确保数据目录存在
+          echo "创建数据目录..."
+          mkdir -p /var/lib/mysql
+          
+          # 设置正确的权限
+          echo "设置数据目录权限..."
+          chown -R 999:999 /var/lib/mysql
+          chmod -R 750 /var/lib/mysql
+          
+          # 检查是否需要初始化MySQL数据目录
+          if [ ! -f "/var/lib/mysql/mysql/user.frm" ] && [ ! -f "/var/lib/mysql/mysql/user.ibd" ]; then
+            echo "MySQL数据目录未初始化，开始初始化..."
+            
+            # 初始化MySQL数据目录
+            mysqld --initialize-insecure \
+              --user=999 \
+              --datadir=/var/lib/mysql \
+              --basedir=/usr \
+              --character-set-server=utf8mb4 \
+              --collation-server=utf8mb4_unicode_ci
+            
+            echo "MySQL数据目录初始化完成"
+          else
+            echo "MySQL数据目录已存在，跳过初始化"
+          fi
+          
+          # 再次确保权限正确
+          chown -R 999:999 /var/lib/mysql
+          chmod -R 750 /var/lib/mysql
+          
+          echo "设置后的权限:"
+          ls -la /var/lib/mysql
+          echo "检查数据目录内容:"
+          ls -la /var/lib/mysql/
+          echo "=== 初始化完成 ==="
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
       containers:
       - name: mysql
         image: mysql:8.0.39
@@ -32,20 +87,25 @@ spec:
               name: ragflow-config
               key: TIMEZONE
         command:
+        - mysqld
         - --max_connections=1000
         - --character-set-server=utf8mb4
         - --collation-server=utf8mb4_unicode_ci
         - --default-authentication-plugin=mysql_native_password
         - --tls_version=TLSv1.2,TLSv1.3
-        - --init-file
-        - /data/application/init.sql
+        - --init-file=/data/application/init.sql
         - --binlog_expire_logs_seconds=604800
+        - --skip-host-cache
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
         - name: init-sql
           mountPath: /data/application/init.sql
           subPath: init.sql
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 999
+          fsGroup: 999
         resources:
           requests:
             memory: "512Mi"
@@ -56,22 +116,20 @@ spec:
         livenessProbe:
           exec:
             command:
-            - mysqladmin
-            - ping
-            - -uroot
-            - -p${MYSQL_ROOT_PASSWORD}
-          initialDelaySeconds: 30
+            - /bin/sh
+            - -c
+            - mysqladmin ping -uroot -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
           exec:
             command:
-            - mysqladmin
-            - ping
-            - -uroot
-            - -p${MYSQL_ROOT_PASSWORD}
-          initialDelaySeconds: 5
+            - /bin/sh
+            - -c
+            - mysqladmin ping -uroot -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 30
           periodSeconds: 5
           timeoutSeconds: 3
       volumes:

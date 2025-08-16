@@ -107,6 +107,11 @@ spec:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ragflow-local-storage
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: elasticsearch-pvc
+    namespace: ragflow
   local:
     path: /mnt/ragflow/elasticsearch-pvc
   nodeAffinity:
@@ -133,6 +138,11 @@ spec:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ragflow-local-storage
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: infinity-pvc
+    namespace: ragflow
   local:
     path: /mnt/ragflow/infinity-pvc
   nodeAffinity:

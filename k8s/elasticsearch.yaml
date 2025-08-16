@@ -63,6 +63,9 @@ spec:
           httpGet:
             path: /
             port: 9200
+            httpHeaders:
+            - name: Authorization
+              value: "Basic ZWxhc3RpYzppbmZpbmlfcmFnX2Zsb3c="
           initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 10
@@ -71,6 +74,9 @@ spec:
           httpGet:
             path: /
             port: 9200
+            httpHeaders:
+            - name: Authorization
+              value: "Basic ZWxhc3RpYzppbmZpbmlfcmFnX2Zsb3c="
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10

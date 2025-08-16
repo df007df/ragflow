@@ -23,6 +23,7 @@ spec:
         - containerPort: 23820
         - containerPort: 5432
         command:
+        - infinity
         - -f
         - /infinity_conf.toml
         env:

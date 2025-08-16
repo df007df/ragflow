@@ -21,7 +21,7 @@ spec:
       
       containers:
       - name: ragflow
-        image: infiniflow/ragflow:v0.20.1-slim
+        image: infiniflow/ragflow:v0.20.1
         ports:
         - containerPort: 9380
         - containerPort: 80
@@ -156,6 +156,7 @@ spec:
           name: service-config
       - name: entrypoint-script
         configMap:
+          defaultMode: 0755
           name: entrypoint-config
 ---
 apiVersion: v1
